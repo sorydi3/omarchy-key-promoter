@@ -3,8 +3,8 @@
 Parent: [A reliable Omarchy shortcut coach](../map.md)
 Labels: wayfinder:prototype
 Type: prototype
-Status: open
-Assignee: none
+Status: claimed
+Assignee: sorydi3
 Blocked by: 02, 03
 
 ## Question
