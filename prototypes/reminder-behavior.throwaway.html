@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Shortcut coach • Reminder prototype</title>
+<style>
+:root{font:17px system-ui;color:#e6e8ed;background:#15191f;color-scheme:dark}body{max-width:1000px;margin:40px auto;padding:0 24px}h1{font-size:32px}h2{font-size:21px}p{line-height:1.6;color:#bfc5d1}section{border:1px solid #39414d;padding:22px;border-radius:12px;margin:20px 0}button,select{font:inherit;padding:10px 13px;border:1px solid #576172;border-radius:7px;background:#252d38;color:inherit;cursor:pointer;margin:4px}button:hover,button:focus-visible{outline:2px solid #8bbdff}button[aria-selected=true]{background:#304b71}button:disabled{opacity:.4;cursor:default}label{display:inline-block;margin:6px}dl{display:grid;grid-template-columns:1fr 1fr;gap:10px}dt{color:#bfc5d1}dd{margin:0}#hint{background:#21334b;border:1px solid #8bbdff;padding:20px;border-radius:12px;max-width:440px;margin-left:auto}kbd{font:inherit;border:1px solid #8295af;padding:4px 8px;border-radius:5px}small{color:#aeb9c8}#reason{color:#a4ccff}footer{padding:30px 0;color:#bfc5d1}#steps button{display:block;text-align:left}pre{white-space:pre-wrap}input{accent-color:#8bbdff}
+</style>
+<h1>When should the coach remind you?</h1>
+<p><strong>Throwaway behavior prototype.</strong> Explore whether hints recur, become quieter after verified shortcut use, and respect your controls. One Browser action represents the policy. All values below are proposals, not settled decisions.</p>
+<p>Draft: a 6-second hint at bottom right, a 60-second repeat cooldown, “Less often” increases it to 10 minutes, and 3 verified shortcut uses pause automatic hints for 1 hour. No animation, focus stealing, sound, network, or saved history. The clock is simulated so you can explore without waiting.</p>
+<section aria-labelledby="state-heading"><h2 id="state-heading">Current state</h2><dl id="state"></dl><p id="reason" role="status" aria-live="polite"></p><div id="hint" hidden><small>Shortcut for your selection</small><p><strong>Browser</strong> &nbsp; <kbd>Super + Shift + Enter</kbd></p><div id="hintbuttons"></div></div><p id="empty">No hint on screen.</p></section>
+<section><h2>Try any action</h2><p>These buttons simulate reliable reports; they don’t launch apps or observe your keyboard.</p><div id="controls"></div><label>Placement <select id="position"><option value="right">Bottom right</option><option value="left">Bottom left</option><option value="center">Bottom center</option></select></label><label>Visible duration <select id="duration"><option value="6">6 seconds</option><option value="10">10 seconds</option><option value="0">Until dismissed</option></select></label><p><small>In this page the hint appears in the state panel, aligned to your chosen side. A real overlay would use that screen corner. Interactive hints must remain open while being used.</small></p></section>
+<section><h2>Guided walkthroughs</h2><div role="tablist" aria-label="Reminder scenarios" id="tabs"></div><p id="scenario"></p><div id="steps"></div></section>
+<footer>Review questions: Is the hint easy to notice without interrupting you? Are the cooldown and learning pause useful? Do “Less often,” “Hide this shortcut,” and “Pause all” give enough control? Resetting history here only affects this in-memory demo.</footer>
+<script>
+// Pure behavior module; no DOM, storage, timers, or input listeners.
+const ReminderModel=(()=>{
+ const initial=()=>({now:0,coverage:true,observation:true,hidden:false,paused:false,less:false,uses:0,shown:0,lastHint:null,quietUntil:0,until:null,visible:false,duration:6,position:'right',reason:'Ready. Select Browser through the menu to try a hint.'});
+ function reduce(old,event){let s={...old};const a=event.type;
+ if(a==='reset')return initial();
+ if(a==='advance'){s.now+=event.seconds;if(s.visible&&s.until!==null&&s.now>=s.until)s.visible=false;s.reason='Simulated clock advanced. No learning inferred from time passing.';return s;}
+ if(a==='duration'){s.duration=event.value;if(s.visible)s.until=s.duration?s.now+s.duration:null;s.reason='Draft duration changed.';return s;}
+ if(a==='position'){s.position=event.value;s.reason='Draft placement changed.';return s;}
+ if(a==='coverage'){s.coverage=!s.coverage;s.visible=false;s.reason=s.coverage?'Reliable Browser reports available again. Fresh selections only.':'Reliable reports unavailable. Automatic hints disabled; preview remains available.';return s;}
+ if(a==='observation'){s.observation=!s.observation;s.reason='Shortcut observation '+(s.observation?'available.':'unavailable. Future shortcut use is unknown; existing history is retained.');return s;}
+ if(a==='pause'){s.paused=!s.paused;s.visible=false;s.reason=s.paused?'All automatic hints paused.':'Automatic hints resumed; hide and cooldown preferences still apply.';return s;}
+ if(a==='hide'){s.hidden=true;s.visible=false;s.reason='Browser shortcut hidden until you restore it.';return s;}
+ if(a==='restore'){s.hidden=false;s.reason='Browser shortcut restored. Other reminder rules still apply.';return s;}
+ if(a==='less'){s.less=true;s.visible=false;s.reason='Browser reminders reduced to at most once every 10 minutes.';return s;}
+ if(a==='dismiss'){s.visible=false;s.reason='Hint dismissed. This does not count as knowing the shortcut.';return s;}
+ if(a==='clear'){s.uses=0;s.quietUntil=0;s.shown=0;s.lastHint=null;s.reason='Learning counts reset. Hide, pause, and Less often preferences retained.';return s;}
+ if(a==='shortcut'){if(!s.observation){s.reason='Shortcut use is unknown. Learning counts unchanged.';return s;}s.uses++;if(s.uses%3===0)s.quietUntil=s.now+3600;s.visible=false;s.reason='Verified Browser shortcut use recorded.'+(s.uses%3===0?' Automatic hints pause for one hour.':'');return s;}
+ if(a==='menu'||a==='preview'){
+ if(a==='menu'){
+ if(!s.coverage)s.reason='No hint: reliable Browser reporting unavailable.';
+ else if(s.paused)s.reason='No hint: automatic coaching is paused.';
+ else if(s.hidden)s.reason='No hint: Browser shortcut is hidden.';
+ else if(s.now<s.quietUntil)s.reason='No hint: learning pause is active.';
+ else if(s.lastHint!==null&&s.now-s.lastHint<(s.less?600:60))s.reason='No hint: repeat cooldown is active.';
+ else {s.visible=true;s.shown++;s.lastHint=s.now;s.until=s.duration?s.now+s.duration:null;s.reason='Browser selected through the menu. Showing its equivalent shortcut.';return s;}
+ return s;
+ }
+ s.visible=true;s.until=s.duration?s.now+s.duration:null;s.reason='Test preview only: counts, cooldown, and preferences unchanged.';return s;
+ }
+ return s;
+ }
+ return {initial,reduce};
+})();
+</script>
+<script>
+let state=ReminderModel.initial();
+const actions=[['menu','Select Browser in menu'],['shortcut','Simulate shortcut use'],['preview','Preview hint'],['advance','Advance 10 seconds',10],['advance','Advance 1 minute',60],['advance','Advance 1 hour',3600],['pause','Pause / resume all'],['restore','Restore Browser hint'],['coverage','Toggle Browser reporting'],['observation','Toggle shortcut observation'],['clear','Reset learning counts'],['reset','Reset entire demo']];
+function button(label,event,parent){const b=document.createElement('button');b.textContent=label;b.onclick=()=>dispatch(event);parent.append(b);return b;}
+actions.forEach(([type,label,seconds])=>button(label,{type,seconds},document.querySelector('#controls')));
+[['dismiss','Dismiss'],['less','Less often'],['hide','Hide this shortcut'],['pause','Pause all']].forEach(([type,label])=>button(label,{type},document.querySelector('#hintbuttons')));
+const scenarios=[
+ {name:'Repeated menu use',description:'A second selection should not flood the screen. After the cooldown, a new selection can show a hint.',steps:[['Select Browser',{type:'menu'}],['Select Browser again',{type:'menu'}],['Advance one minute',{type:'advance',seconds:60}],['Select Browser after cooldown',{type:'menu'}]]},
+ {name:'Verified learning',description:'Three verified uses create a temporary quiet period. Selecting through the menu after the pause can teach the shortcut again.',steps:[['Use shortcut once',{type:'shortcut'}],['Use it twice',{type:'shortcut'}],['Use it a third time',{type:'shortcut'}],['Select Browser during pause',{type:'menu'}],['Advance one hour',{type:'advance',seconds:3600}],['Select Browser after pause',{type:'menu'}]]},
+ {name:'Unknown use',description:'Without shortcut observation, simulated use changes no learning counts. Time passing and dismissal also prove no mastery.',steps:[['Disable shortcut observation',{type:'observation'}],['Simulate shortcut use',{type:'shortcut'}],['Select Browser',{type:'menu'}],['Dismiss the hint',{type:'dismiss'}],['Advance one minute',{type:'advance',seconds:60}],['Select Browser again',{type:'menu'}]]},
+ {name:'Your controls',description:'Hiding and pausing are preferences. Resetting learning counts does not undo them.',steps:[['Show Browser hint',{type:'menu'}],['Hide Browser shortcut',{type:'hide'}],['Reset learning counts',{type:'clear'}],['Select Browser while hidden',{type:'menu'}],['Restore Browser shortcut',{type:'restore'}],['Select Browser again',{type:'menu'}]]},
+ {name:'Missing integration',description:'Without reliable reports, automatic hints stop. Preview still works. Reconnecting does not replay previous actions.',steps:[['Disable reliable reporting',{type:'coverage'}],['Select Browser without reporting',{type:'menu'}],['Show a test preview',{type:'preview'}],['Dismiss preview',{type:'dismiss'}],['Restore reporting',{type:'coverage'}],['Make a fresh menu selection',{type:'menu'}]]}
+];
+let selected=0,step=0;
+function walkthrough(i){selected=i;step=0;state=ReminderModel.initial();render();renderGuide();}
+function renderGuide(){document.querySelectorAll('[role=tab]').forEach((b,i)=>b.setAttribute('aria-selected',i===selected));document.querySelector('#scenario').textContent=scenarios[selected].description;const box=document.querySelector('#steps');box.replaceChildren();scenarios[selected].steps.forEach(([label,event],i)=>{const b=document.createElement('button');b.textContent=(i<step?'✓ ':'')+(i+1)+'. '+label;b.disabled=i!==step;b.onclick=()=>{dispatch(event);step++;renderGuide();};box.append(b);});}
+scenarios.forEach((s,i)=>{const b=document.createElement('button');b.textContent=s.name;b.setAttribute('role','tab');b.onclick=()=>walkthrough(i);document.querySelector('#tabs').append(b);});
+function dispatch(event){state=ReminderModel.reduce(state,event);render();}
+function render(){const fields=[['Simulated time',state.now+' seconds'],['Browser reporting',state.coverage?'Available':'Unavailable'],['Shortcut observation',state.observation?'Available':'Unknown'],['Automatic hints',state.paused?'Paused':'Enabled'],['Browser hidden',state.hidden?'Yes':'No'],['Repeat cooldown',state.less?'10 minutes':'1 minute'],['Verified shortcut uses',state.uses],['Automatic hints shown',state.shown],['Last automatic hint',state.lastHint===null?'Never':state.lastHint+' seconds'],['Learning pause remaining',Math.max(0,state.quietUntil-state.now)+' seconds'],['Hint visibility',state.visible?'Visible':'Hidden'],['Visible until',state.visible?(state.until===null?'Dismissed':state.until+' seconds'):'—'],['Placement',state.position],['Duration',state.duration?state.duration+' seconds':'Until dismissed']];const dl=document.querySelector('#state');dl.replaceChildren();fields.forEach(([label,value])=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;dl.append(dt,dd);});document.querySelector('#reason').textContent=state.reason;const hint=document.querySelector('#hint');hint.hidden=!state.visible;hint.style.marginLeft=state.position==='left'?'0':'auto';hint.style.marginRight=state.position==='right'?'0':'auto';document.querySelector('#empty').hidden=state.visible;document.querySelector('#duration').value=state.duration;document.querySelector('#position').value=state.position;}
+document.querySelector('#duration').onchange=e=>dispatch({type:'duration',value:Number(e.target.value)});document.querySelector('#position').onchange=e=>dispatch({type:'position',value:e.target.value});render();renderGuide();
+</script></html>
