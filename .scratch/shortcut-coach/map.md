@@ -22,6 +22,10 @@ An implementation-ready plan for a reliable shortcut coach covering Omarchy menu
 
 ## Decisions so far
 
+- [Research action reporting across Omarchy controls](issues/01-action-events.md): selection paths differ; inspected APIs lack shared action reporting, so authoritative attribution requires integration.
+
+- [Research privacy-preserving shortcut observation](issues/02-shortcut-observation.md): inspected interfaces lack universal shortcut-use events; explicit origin-aware binding instrumentation is feasible without unrelated key capture.
+
 ## Not yet specified
 
 - Release and upstream contribution sequence once integration ownership and compatibility requirements are understood.
