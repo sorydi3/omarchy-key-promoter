@@ -1,0 +1,53 @@
+# Action reporting across Omarchy controls
+
+Research date: 2026-11-12. Planning artifact; no implementation. Scope: the menu, dock and workspace coaching surfaces, including selecting an action that focuses an existing window.
+
+## Conclusion
+
+Reliable attribution needs reports at the graphical control's selection boundary. Existing compositor events describe effects, not the control or input that caused them. No general action-selected subscription was found in the inspected shell API. A shared shell reporting contract plus small producer hooks is the recommended integration. Stock installations can observe effects and some launch provenance, but cannot guarantee coverage or correctly attribute existing-window focus to a dock/menu selection.
+
+## Evidence and version boundaries
+
+Installed packages inspected with `pacman -Q`: `omarchy 4.5.0-3`, `hyprland 0.56.2-4`, `quickshell 0.3.2.r7.g2b4501a-1`. Installed source is under `/usr/share/omarchy/shell`; line numbers below refer to that snapshot. Official upstream `quattro` source and documentation were read on the research date. Those moving links are comparison sources, not a claim that the installed package equals branch HEAD. In particular, upstream Workspaces.qml reads `monitors/workspaces`, while the installed copy reads `monitor-workspaces` and contains additional monitor refresh handling. Feature detection and version-specific validation are necessary. [Installed workspace source](/usr/share/omarchy/shell/plugins/bar/widgets/Workspaces.qml:40), [current upstream workspace source](https://raw.githubusercontent.com/omacom/omarchy/quattro/shell/plugins/bar/widgets/Workspaces.qml).
+
+## Confirmed producer paths
+
+| Surface | Selection boundary and identity available there | Important distinction |
+| --- | --- | --- |
+| Menu | `activateIndex(index, fromPointer)` resolves a row. App rows carry `appId`; action rows call `applySelected(row.itemId, row.action)`. | Menu/link rows navigate rather than execute. Dmenu/input paths carry arbitrary caller content and should be excluded. |
+| Dock | `DockWindow` click handler calls `activate(item)` for ordinary activation, `launch(item)` for middle click; context menu offers launch separately. `item.key` is the desktop entry identity; chosen existing window is available inside `activate`. | `activate` launches only when there are no windows. Otherwise it chooses a window and calls `bringForward`, bypassing AppLibrary. |
+| App grid | `AppGrid.launch(index)` invokes dock `launchEntry(entry)` or AppLibrary directly; pointer and Enter both reach it. | Capture the graphical selection origin before the shared launch helper loses it. |
+| Workspace controls | `onPressed` cycles layout when the clicked workspace is already shown; otherwise calls `focusWorkspace(modelData)`. Wheel normalizes deltas and focuses the resulting workspace only when it differs. | An active-workspace click is a layout action, not workspace focus. Target includes monitor/block/slot semantics, not just visible digit. |
+
+Sources: [installed menu](/usr/share/omarchy/shell/plugins/menu/Menu.qml:860), [installed dock mouse handler](/usr/share/omarchy/shell/plugins/dock/DockWindow.qml:481), [installed dock activation](/usr/share/omarchy/shell/plugins/dock/Dock.qml:160), [installed app grid](/usr/share/omarchy/shell/plugins/dock/AppGrid.qml:143), [installed workspace focus/wheel](/usr/share/omarchy/shell/plugins/bar/widgets/Workspaces.qml:102), [installed workspace press](/usr/share/omarchy/shell/plugins/bar/widgets/Workspaces.qml:279). Official comparison: [menu source](https://github.com/omacom/omarchy/blob/quattro/shell/plugins/menu/Menu.qml), [dock source](https://github.com/omacom/omarchy/blob/quattro/shell/plugins/dock/Dock.qml).
+
+Menu execution has two routes: `runAction` can summon a shell plugin directly or execute a command. `openRoute` can execute a leaf without a graphical selection. Consequently, reporting every `runAction` or shell IPC call as a graphical action would create false attribution. The `fromPointer` argument exists in menu selection but is not propagated to AppLibrary. Pressing Enter to select a graphical menu row is also distinct from directly invoking that action's shortcut. [Installed runAction](/usr/share/omarchy/shell/plugins/menu/Menu.qml:164), [installed direct leaf route](/usr/share/omarchy/shell/plugins/menu/Menu.qml:1019).
+
+AppLibrary `launch` starts terminal entries through `omarchy-launch-tui`, and others through `uwsm-app -- gtk-launch`. Its launch feedback closes when the toplevel count increases **or active toplevel changes**; that feedback is a heuristic, not a selected-action event or proof that a particular request succeeded. [Installed AppLibrary](/usr/share/omarchy/shell/services/AppLibrary.qml:77), [feedback](/usr/share/omarchy/shell/services/AppLibrary.qml:195).
+
+## Existing API and stock observability
+
+The shell has command IPC for lifecycle and method calls. Third-party plugins receive scoped facades; ordinary plugins cannot use `serviceFor` as an unrestricted subscription to the menu/dock. The application facade exposes `appsChanged`, list/icon functions and `launch/remove`, with no launch-selected signal. Reaching into another component's QML tree would be an unsupported dependency, even though the facade is explicitly not a process sandbox. [Installed PluginShellApi](/usr/share/omarchy/shell/services/PluginShellApi.qml:1), [installed app facade](/usr/share/omarchy/shell/services/PluginAppLibraryApi.qml:9), [official shell API reference](https://raw.githubusercontent.com/omacom/omarchy/quattro/docs/omarchy-shell.md), [official app facade](https://raw.githubusercontent.com/omacom/omarchy/quattro/shell/services/PluginAppLibraryApi.qml).
+
+Hyprland socket2 publishes `EVENT>>DATA` records, including window opening, active-window changes and workspace changes. These confirm compositor state transitions; they do not include menu/dock identity, graphical versus shortcut input, or the selected desktop entry. In particular, an already-focused target may produce no state change. Event timing alone cannot establish causality. [Official IPC event definitions](https://wiki.hypr.land/ipc/).
+
+The current coach watches menu closing, window/layer activity, gtk-launch scopes and shell environment markers. Its own source acknowledges timing-only layer inference. A gtk-launch scope is insufficient to distinguish menu from dock because both now use AppLibrary, and it cannot cover dock `bringForward`. Environment/process identity cannot prove which graphical control was used. [Current coach source](../Service.qml).
+
+**Stock fallback recommendation (proposal):** capability-check at startup. Without the reporting extension, advertise partial coverage and suppress ambiguous menu-close, layer-open, workspace-change and window-focus hints. Preserve a stock hint only if independent evidence proves both graphical origin and uniquely matched action; the inspected sources do not establish such a general guarantee. Do not reduce reminder frequency based on inferred shortcut usage. A conservative fallback may show no hints for these surfaces until reporting is available.
+
+## Proposed integration contract
+
+These are design recommendations, not existing Omarchy interfaces:
+
+1. Add a shell-owned, versioned action-reporting service with a narrow read-only subscription facade for the coach. Built-in producers publish through the trusted shell; ordinary IPC callers must not automatically count as graphical selections. Define delivery as session-local, best effort, no replay after shell reload.
+2. Emit one `selected` report at the resolved producer boundary, before dispatch, after validation. Include schema version, session/sequence identifier, source surface, operation, stable action key, origin (`pointer`, `menu-keyboard`, or explicitly unknown), and only required target parameters. Desktop IDs and menu item IDs need an explicit mapping to the shared action vocabulary; they are not automatically interchangeable.
+3. Preserve launch versus activate/focus operation internally. Dock focus of an existing window qualifies, including an already-focused target, but offer a shortcut only when it performs the same action. Carry an ephemeral window address only where matching requires it; do not retain it in learning history.
+4. Menu reports exclude navigation, cancel, arbitrary dmenu/input, and direct leaf IPC execution. Dock reports cover ordinary activation, middle-click/new instance, context launch and app grid with correct origin; avoid duplicate reporting in shared AppLibrary helpers. Workspace reports distinguish focus, wheel-selected target, and layout cycle, carrying monitor plus absolute workspace and relative slot where needed.
+5. Treat producer selection as authoritative for **intent**, not execution success. Optional correlated completion/failure reports may gate hints for operations with reliable acknowledgements. Compositor effects can corroborate outcomes but cannot upgrade an untrusted origin into a graphical selection. Keep pending correlation bounded and in memory; discard ambiguous matches rather than guessing.
+6. Retain only local per-action/shortcut counts and hide/reminder preferences. Do not persist raw commands, menu labels, search queries, typed text, window titles, process environments or event payload logs. No raw keyboard capture is required by this integration.
+
+This plan requires Omarchy producer/API changes or explicitly maintained replacement controls; installing the coach alone cannot supply authoritative coverage. Cloning controls is a possible separately versioned opt-in fallback, not a stock-installation capability. Upstream ownership, report API stability and the coach's compatibility range remain release-planning decisions. Producer behavior should be validated against the shipped version, especially workspace monitor numbering and layout cycling.
+
+## Acceptance evidence for subsequent implementation
+
+Exercise menu pointer and Enter selection, app launch that reuses an existing browser window, dock ordinary activation/new launch/restored window/already-focused target, app grid, workspace click/wheel/layout click, two monitors, cancel then shortcut, direct leaf IPC, and simultaneous unrelated window changes. Expect one correctly attributed report for each supported selection; expect none for cancellation, navigation, unrelated changes or arbitrary dmenu content. Unsupported versions, missing extension and ambiguous matches must suppress hints without collecting additional private data. This research performed source inspection only; it did not mutate desktop configuration or simulate input.
