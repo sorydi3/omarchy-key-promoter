@@ -28,9 +28,10 @@ An implementation-ready plan for a reliable shortcut coach covering Omarchy menu
 
 - [Define when actions and shortcuts are equivalent](issues/03-action-identity.md): require the same operation, target/options, and applicable context; choose one available equivalent shortcut deterministically.
 
+- [Choose integration and stock-installation behavior](issues/04-compatibility.md): versioned Omarchy selection reports enable independent coverage; unavailable reporting disables affected hints, with an opt-in reversible development integration.
+
 ## Not yet specified
 
-- Release and upstream contribution sequence once integration ownership and compatibility requirements are understood.
 - Storage details and migration needs once the learning policy establishes exactly what must be retained.
 
 ## Out of scope
