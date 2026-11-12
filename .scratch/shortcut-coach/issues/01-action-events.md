@@ -3,8 +3,8 @@
 Parent: [A reliable Omarchy shortcut coach](../map.md)
 Labels: wayfinder:research
 Type: research
-Status: open
-Assignee: none
+Status: claimed
+Assignee: sorydi3
 Blocked by: none
 
 ## Question
