@@ -26,6 +26,8 @@ An implementation-ready plan for a reliable shortcut coach covering Omarchy menu
 
 - [Research privacy-preserving shortcut observation](issues/02-shortcut-observation.md): inspected interfaces lack universal shortcut-use events; explicit origin-aware binding instrumentation is feasible without unrelated key capture.
 
+- [Define when actions and shortcuts are equivalent](issues/03-action-identity.md): require the same operation, target/options, and applicable context; choose one available equivalent shortcut deterministically.
+
 ## Not yet specified
 
 - Release and upstream contribution sequence once integration ownership and compatibility requirements are understood.
