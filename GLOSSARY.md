@@ -49,3 +49,9 @@ A temporary period without automatic reminders for an action, triggered by verif
 
 **Learning history**:
 Local aggregate counts and minimal timing state used to adjust coaching. It excludes a detailed record of individual activities.
+
+**Coaching decision**:
+The outcome of considering a reported selection for a hint, including a reason for showing or suppressing it. It is distinct from current coverage status and is not evidence about an unreported selection.
+
+**Support summary**:
+A user-previewed diagnostic summary containing versions, capability status, and generic reason codes, without action identities or learning history.

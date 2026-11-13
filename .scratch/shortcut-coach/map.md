@@ -32,6 +32,8 @@ An implementation-ready plan for a reliable shortcut coach covering Omarchy menu
 
 - [Choose reminder behavior and hint controls](issues/05-reminders.md): accepted 6-second hints, per-action cooldowns and verified-use pauses, accessible controls, action-scoped hiding, and local aggregate persistence.
 
+- [Define useful coaching diagnostics](issues/06-diagnostics.md): an on-demand panel separates current coverage from one expiring decision; support summaries exclude action identities and learning history.
+
 ## Not yet specified
 
 No unspecified areas currently identified; revisit as the remaining decisions are resolved.
