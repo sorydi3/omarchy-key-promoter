@@ -34,6 +34,8 @@ An implementation-ready plan for a reliable shortcut coach covering Omarchy menu
 
 - [Define useful coaching diagnostics](issues/06-diagnostics.md): an on-demand panel separates current coverage from one expiring decision; support summaries exclude action identities and learning history.
 
+- [Define local coaching state and migration](issues/09-local-state.md): retain minimal action aggregates/preferences, migrate old counts only as hints, reset learning for changed suggestions, and preserve state on recovery failures.
+
 ## Not yet specified
 
 No unspecified areas currently identified; revisit as the remaining decisions are resolved.
