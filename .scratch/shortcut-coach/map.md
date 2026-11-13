@@ -30,9 +30,11 @@ An implementation-ready plan for a reliable shortcut coach covering Omarchy menu
 
 - [Choose integration and stock-installation behavior](issues/04-compatibility.md): versioned Omarchy selection reports enable independent coverage; unavailable reporting disables affected hints, with an opt-in reversible development integration.
 
+- [Choose reminder behavior and hint controls](issues/05-reminders.md): accepted 6-second hints, per-action cooldowns and verified-use pauses, accessible controls, action-scoped hiding, and local aggregate persistence.
+
 ## Not yet specified
 
-- Storage details and migration needs once the learning policy establishes exactly what must be retained.
+No unspecified areas currently identified; revisit as the remaining decisions are resolved.
 
 ## Out of scope
 

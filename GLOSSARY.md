@@ -40,3 +40,12 @@ The identity of one action selection, used to distinguish that selection from a 
 
 **Development integration**:
 An explicitly installed, reversible integration that supplies action reporting before a compatible upstream Omarchy interface is available.
+
+**Repeat cooldown**:
+The minimum interval between automatic hints for the same action.
+
+**Learning pause**:
+A temporary period without automatic reminders for an action, triggered by verified uses of an equivalent shortcut. Its existence does not establish permanent mastery.
+
+**Learning history**:
+Local aggregate counts and minimal timing state used to adjust coaching. It excludes a detailed record of individual activities.
