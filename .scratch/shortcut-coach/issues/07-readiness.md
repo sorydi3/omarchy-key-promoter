@@ -3,8 +3,8 @@
 Parent: [A reliable Omarchy shortcut coach](../map.md)
 Labels: wayfinder:grilling
 Type: grilling
-Status: open
-Assignee: none
+Status: claimed
+Assignee: sorydi3
 Blocked by: 03, 04, 05, 06, 09
 
 ## Question
