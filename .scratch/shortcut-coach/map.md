@@ -36,6 +36,8 @@ An implementation-ready plan for a reliable shortcut coach covering Omarchy menu
 
 - [Define local coaching state and migration](issues/09-local-state.md): retain minimal action aggregates/preferences, migrate old counts only as hints, reset learning for changed suggestions, and preserve state on recovery failures.
 
+- [Set acceptance criteria and implementation boundaries](issues/07-readiness.md): separate reporting, matching, policy, persistence and presentation; require automated behavior checks plus live integration, accessibility and privacy evidence.
+
 ## Not yet specified
 
 No unspecified areas currently identified; revisit as the remaining decisions are resolved.
